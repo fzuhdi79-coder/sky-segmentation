@@ -17,12 +17,6 @@ const btnText = document.getElementById("btnText");
 const loadingSpinner = document.getElementById("loadingSpinner");
 const resultList = document.getElementById("resultList");
 
-function resetResult() {
-    resultImage.src = "";
-    resultList.innerHTML = "";
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-}
-
 // Preview Gambar
 fileInput.addEventListener("change", () => {
     const file = fileInput.files[0];
@@ -36,7 +30,13 @@ fileInput.addEventListener("change", () => {
     reader.readAsDataURL(file);
 });
 
-// Detect Button
+function resetResult() {
+    resultImage.src = "";
+    resultList.innerHTML = "";
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+// Detect
 detectBtn.addEventListener("click", async () => {
     const file = fileInput.files[0];
     if (!file) return alert("Pilih gambar dulu!");
@@ -47,7 +47,7 @@ detectBtn.addEventListener("click", async () => {
 
     const form = new FormData();
     form.append("file", file);
-    form.append("conf", "0.01");
+    form.append("conf", "0.03");   // Sangat rendah
     form.append("iou", "0.5");
     form.append("imgsz", "640");
 
@@ -60,13 +60,15 @@ detectBtn.addEventListener("click", async () => {
 
         const data = await response.json();
         
-        // DEBUG LENGKAP
+        // === DEBUG UTAMA ===
         console.log("=== FULL API RESPONSE ===", data);
-        console.dir(data);                    // Lebih detail
-        console.log("Keys utama:", Object.keys(data));
+        resultList.innerHTML = `<li class="text-info">🔍 Response diterima. Cek Console (F12)</li>`;
 
         resultImage.src = imagePreview.src;
-        resultImage.onload = () => drawResult(data);
+
+        resultImage.onload = () => {
+            drawResult(data);
+        };
 
     } catch (err) {
         console.error(err);
@@ -78,37 +80,22 @@ detectBtn.addEventListener("click", async () => {
     }
 });
 
-// ================= DRAW RESULT =================
+// Draw Result dengan debug kuat
 function drawResult(data) {
+    const results = data.images?.[0]?.results || [];
+    console.log("Jumlah detection:", results.length);
+
     resultList.innerHTML = "";
-
-    let results = [];
-
-    // Coba berbagai kemungkinan struktur
-    if (data.images?.[0]?.results) {
-        results = data.images[0].results;
-    } else if (data.results) {
-        results = data.results;
-    } else if (data.predictions) {
-        results = data.predictions;
-    } else if (data.data) {
-        results = Array.isArray(data.data) ? data.data : [];
-    } else if (Array.isArray(data)) {
-        results = data;
-    }
-
-    console.log("✅ Jumlah detection setelah parsing:", results.length);
 
     if (results.length === 0) {
         resultList.innerHTML = `
             <li class="text-danger">
-                ❌ Masih tidak ada deteksi.<br>
-                <small>Kirim screenshot Console (F12) yang baru ke saya.</small>
+                ❌ Tidak ada deteksi sama sekali.<br>
+                <small>Cek Console (F12) untuk melihat response API</small>
             </li>`;
         return;
     }
 
-    // Jika ada hasil, gambar
     const img = resultImage;
     canvas.width = img.clientWidth;
     canvas.height = img.clientHeight;
@@ -117,32 +104,48 @@ function drawResult(data) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     results.forEach((pred, i) => {
-        const box = pred.box || pred.bbox || pred.xyxy || {};
-        const { x1, y1, x2, y2 } = box;
+        console.log(`Detection ${i}:`, pred.name, pred.confidence);
 
-        if (typeof x1 === 'undefined') return;
+        const { x1, y1, x2, y2 } = pred.box || {};
+        if (!x1) return;
 
         const left = x1 * scaleX;
         const top = y1 * scaleY;
         const w = (x2 - x1) * scaleX;
         const h = (y2 - y1) * scaleY;
 
-        const color = `hsl(${i * 70}, 90%, 60%)`;
+        const color = `hsl(${i * 80}, 100%, 60%)`;
 
+        // Box
         ctx.strokeStyle = color;
         ctx.lineWidth = 4;
         ctx.strokeRect(left, top, w, h);
 
-        const label = `${pred.name || pred.class || 'sky'} (${(pred.confidence * 100).toFixed(1)}%)`;
-        
+        // Label
+        const label = `${pred.name || 'unknown'} (${(pred.confidence*100).toFixed(1)}%)`;
         ctx.fillStyle = color;
-        ctx.fillRect(left, top - 30, 300, 30);
+        ctx.fillRect(left, top - 30, 250, 30);
         ctx.fillStyle = "#000";
         ctx.font = "bold 16px Arial";
         ctx.fillText(label, left + 8, top - 8);
 
+        // List
         const li = document.createElement("li");
         li.innerHTML = `✅ ${label}`;
         resultList.appendChild(li);
+
+        // Mask
+        if (pred.segments?.x?.length > 0) {
+            ctx.beginPath();
+            pred.segments.x.forEach((px, idx) => {
+                const x = px * scaleX;
+                const y = pred.segments.y[idx] * scaleY;
+                idx === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            });
+            ctx.closePath();
+            ctx.fillStyle = color.replace(')', ', 0.35)');
+            ctx.fill();
+            ctx.stroke();
+        }
     });
 }
