@@ -131,10 +131,11 @@ function drawResult(data) {
     });
 }
 
-// ================= ANALISIS CERAH / MENDUNG (Biner) =================
+// ================= ANALISIS CERAH / MENDUNG (Versi Final) =================
 function analyzeSkyCondition(pred, img) {
     const canvasTemp = document.createElement("canvas");
     const ctxTemp = canvasTemp.getContext("2d", { willReadFrequently: true });
+    
     const { x1, y1, x2, y2 } = pred.box;
     const width = Math.max(1, Math.floor(x2 - x1));
     const height = Math.max(1, Math.floor(y2 - y1));
@@ -143,39 +144,58 @@ function analyzeSkyCondition(pred, img) {
     canvasTemp.height = height;
     ctxTemp.drawImage(img, x1, y1, width, height, 0, 0, width, height);
 
-    const pixels = ctxTemp.getImageData(0, 0, width, height).data;
-    let r = 0, g = 0, b = 0, count = 0;
+    const imageData = ctxTemp.getImageData(0, 0, width, height).data;
+    let r = 0, g = 0, b = 0;
+    const totalPixels = imageData.length / 4;
 
-    for (let i = 0; i < pixels.length; i += 16) {
-        r += pixels[i];
-        g += pixels[i+1];
-        b += pixels[i+2];
-        count++;
+    // Ambil rata-rata warna
+    for (let i = 0; i < imageData.length; i += 16) {
+        r += imageData[i];
+        g += imageData[i+1];
+        b += imageData[i+2];
     }
-
+    
+    const count = totalPixels / 4;
     const avgR = r / count;
     const avgG = g / count;
     const avgB = b / count;
-    
-    // Indikator utama: seberapa dominan warna biru dibanding merah dan hijau
+
+    // Indikator 1: Seberapa dominan Biru dibanding Merah & Hijau
     const blueDominance = avgB - ((avgR + avgG) / 2);
+    
+    // Indikator 2: Seberapa "berwarna" area tersebut (Bukan abu-abu)
+    // Langit mendung/abu-abu biasanya punya Gap kecil (R, G, dan B nilainya mirip)
+    const colorGap = Math.max(avgR, avgG, avgB) - Math.min(avgR, avgG, avgB);
 
-    console.log(`[DEBUG] BlueDominance: ${blueDominance.toFixed(1)}`);
+    console.log(`[DEBUG] BlueDom: ${blueDominance.toFixed(1)} | Gap: ${colorGap.toFixed(1)}`);
 
-    // LOGIKA BINER:
-    // Jika blueDominance di atas 25, kita anggap Cerah. 
-    // Di bawah itu (termasuk awan putih atau abu-abu), kita anggap Mendung.
-    if (blueDominance > 25) {
+    // ================= LOGIKA BARU =================
+    // 1. Langit Biru Cerah: BlueDominance harus tinggi (> 45) DAN warnanya harus kontras/Gap (> 45)
+    // Kalau cuma 30 (seperti di foto kamu), dia tidak akan lolos ke "Cerah"
+    if (blueDominance > 45 && colorGap > 45) {
         return { 
             isClear: true, 
             label: "(Cerah)", 
-            description: "Langit Biru Terdeteksi" 
+            description: "Langit Biru Bersih" 
         };
-    } else {
+    } 
+    
+    // 2. Jika warnanya sangat "rata/flat" (Gap kecil), meskipun ada biru dikit, itu Mendung
+    else if (colorGap < 50) {
         return { 
             isClear: false, 
             label: "(Mendung)", 
-            description: "Langit Mendung / Tidak Biru" 
+            description: "Langit Mendung / Abu-abu" 
         };
     }
+
+    // 3. Fallback jika ragu-ragu
+    return { 
+        isClear: false, 
+        label: "(Mendung)", 
+        description: "Langit Kurang Cerah" 
+    };
 }
+
+// Pastikan di fungsi drawResult, warnanya juga pas:
+// sky.isClear ? "#22c55e" : "#64748b"; // Hijau (Cerah) : Abu-abu (Mendung)
