@@ -23,7 +23,7 @@ function resetResult() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
-// Preview
+// Preview Gambar
 fileInput.addEventListener("change", () => {
     const file = fileInput.files[0];
     if (!file) return;
@@ -36,7 +36,7 @@ fileInput.addEventListener("change", () => {
     reader.readAsDataURL(file);
 });
 
-// Detect
+// Detect Button
 detectBtn.addEventListener("click", async () => {
     const file = fileInput.files[0];
     if (!file) return alert("Pilih gambar dulu!");
@@ -47,7 +47,7 @@ detectBtn.addEventListener("click", async () => {
 
     const form = new FormData();
     form.append("file", file);
-    form.append("conf", "0.01");   // super rendah
+    form.append("conf", "0.01");
     form.append("iou", "0.5");
     form.append("imgsz", "640");
 
@@ -60,17 +60,16 @@ detectBtn.addEventListener("click", async () => {
 
         const data = await response.json();
         
+        // DEBUG LENGKAP
         console.log("=== FULL API RESPONSE ===", data);
-        console.log("Response keys:", Object.keys(data));
+        console.dir(data);                    // Lebih detail
+        console.log("Keys utama:", Object.keys(data));
 
         resultImage.src = imagePreview.src;
-
-        resultImage.onload = () => {
-            drawResult(data);
-        };
+        resultImage.onload = () => drawResult(data);
 
     } catch (err) {
-        console.error("Fetch Error:", err);
+        console.error(err);
         alert("Error koneksi ke API");
     } finally {
         btnText.textContent = "Detect Sky";
@@ -83,31 +82,33 @@ detectBtn.addEventListener("click", async () => {
 function drawResult(data) {
     resultList.innerHTML = "";
 
-    // Coba semua kemungkinan struktur response
     let results = [];
-    
-    if (data.images && data.images[0] && data.images[0].results) {
+
+    // Coba berbagai kemungkinan struktur
+    if (data.images?.[0]?.results) {
         results = data.images[0].results;
     } else if (data.results) {
         results = data.results;
     } else if (data.predictions) {
         results = data.predictions;
+    } else if (data.data) {
+        results = Array.isArray(data.data) ? data.data : [];
     } else if (Array.isArray(data)) {
         results = data;
     }
 
-    console.log("Hasil parsing results:", results.length);
+    console.log("✅ Jumlah detection setelah parsing:", results.length);
 
     if (results.length === 0) {
         resultList.innerHTML = `
             <li class="text-danger">
                 ❌ Masih tidak ada deteksi.<br>
-                <small>Response structure tidak dikenali. Kirim screenshot Console ke saya.</small>
+                <small>Kirim screenshot Console (F12) yang baru ke saya.</small>
             </li>`;
         return;
     }
 
-    // Jika ada hasil, lanjut gambar (sama seperti sebelumnya)
+    // Jika ada hasil, gambar
     const img = resultImage;
     canvas.width = img.clientWidth;
     canvas.height = img.clientHeight;
@@ -116,9 +117,10 @@ function drawResult(data) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     results.forEach((pred, i) => {
-        const box = pred.box || pred.bbox || {};
+        const box = pred.box || pred.bbox || pred.xyxy || {};
         const { x1, y1, x2, y2 } = box;
-        if (!x1) return;
+
+        if (typeof x1 === 'undefined') return;
 
         const left = x1 * scaleX;
         const top = y1 * scaleY;
