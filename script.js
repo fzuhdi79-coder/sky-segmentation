@@ -23,7 +23,7 @@ function resetResult() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
-// Preview Gambar
+// Preview
 fileInput.addEventListener("change", () => {
     const file = fileInput.files[0];
     if (!file) return;
@@ -36,7 +36,7 @@ fileInput.addEventListener("change", () => {
     reader.readAsDataURL(file);
 });
 
-// Detect Button
+// Detect
 detectBtn.addEventListener("click", async () => {
     const file = fileInput.files[0];
     if (!file) return alert("Pilih gambar dulu!");
@@ -47,7 +47,7 @@ detectBtn.addEventListener("click", async () => {
 
     const form = new FormData();
     form.append("file", file);
-    form.append("conf", "0.02");   // Sangat rendah
+    form.append("conf", "0.01");   // super rendah
     form.append("iou", "0.5");
     form.append("imgsz", "640");
 
@@ -59,14 +59,18 @@ detectBtn.addEventListener("click", async () => {
         });
 
         const data = await response.json();
-        console.log("=== FULL API RESPONSE ===", data);   // <--- PENTING!
+        
+        console.log("=== FULL API RESPONSE ===", data);
+        console.log("Response keys:", Object.keys(data));
 
         resultImage.src = imagePreview.src;
 
-        resultImage.onload = () => drawResult(data);
+        resultImage.onload = () => {
+            drawResult(data);
+        };
 
     } catch (err) {
-        console.error(err);
+        console.error("Fetch Error:", err);
         alert("Error koneksi ke API");
     } finally {
         btnText.textContent = "Detect Sky";
@@ -77,38 +81,44 @@ detectBtn.addEventListener("click", async () => {
 
 // ================= DRAW RESULT =================
 function drawResult(data) {
-    // Beberapa kemungkinan struktur response Ultralytics
-    const results = data.images?.[0]?.results || 
-                    data.results || 
-                    data.predictions || 
-                    data.data || [];
-
-    console.log("Jumlah detection ditemukan:", results.length);
     resultList.innerHTML = "";
+
+    // Coba semua kemungkinan struktur response
+    let results = [];
+    
+    if (data.images && data.images[0] && data.images[0].results) {
+        results = data.images[0].results;
+    } else if (data.results) {
+        results = data.results;
+    } else if (data.predictions) {
+        results = data.predictions;
+    } else if (Array.isArray(data)) {
+        results = data;
+    }
+
+    console.log("Hasil parsing results:", results.length);
 
     if (results.length === 0) {
         resultList.innerHTML = `
             <li class="text-danger">
-                ❌ Tidak ada deteksi.<br>
-                <small>Cek Console (F12) → lihat "FULL API RESPONSE"</small>
+                ❌ Masih tidak ada deteksi.<br>
+                <small>Response structure tidak dikenali. Kirim screenshot Console ke saya.</small>
             </li>`;
         return;
     }
 
+    // Jika ada hasil, lanjut gambar (sama seperti sebelumnya)
     const img = resultImage;
     canvas.width = img.clientWidth;
     canvas.height = img.clientHeight;
-
     const scaleX = canvas.width / img.naturalWidth;
     const scaleY = canvas.height / img.naturalHeight;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     results.forEach((pred, i) => {
-        console.log(`Detection ${i}:`, pred.name || pred.class, pred.confidence);
-
         const box = pred.box || pred.bbox || {};
         const { x1, y1, x2, y2 } = box;
-        if (!x1 && !x2) return;
+        if (!x1) return;
 
         const left = x1 * scaleX;
         const top = y1 * scaleY;
@@ -124,7 +134,7 @@ function drawResult(data) {
         const label = `${pred.name || pred.class || 'sky'} (${(pred.confidence * 100).toFixed(1)}%)`;
         
         ctx.fillStyle = color;
-        ctx.fillRect(left, top - 30, 280, 30);
+        ctx.fillRect(left, top - 30, 300, 30);
         ctx.fillStyle = "#000";
         ctx.font = "bold 16px Arial";
         ctx.fillText(label, left + 8, top - 8);
