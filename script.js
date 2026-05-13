@@ -1,316 +1,189 @@
 // =========================================
-// URL API untuk proses prediksi AI
+// KONFIGURASI API
 // =========================================
-const url = "https://predict-69fee9fcb990c8996f74-dproatj77a-et.a.run.app/predict";
-
-// API Key untuk autentikasi
-const apiKey = "ul_56866a2f711cfacf919849cd158f48fab82e2af9";
-
+const url = "https://predict-6a047d4a843ee5421261-dproatj77a-et.a.run.app/predict";
+const apiKey = "ul_a8b80a07c79ff47679476137091f3136eac6aa75";
 
 // =========================================
-// Mengambil elemen HTML dari DOM
+// ELEMENT HTML
 // =========================================
-
-// Input upload file
 const fileInput = document.getElementById("fileInput");
-
-// Preview gambar upload (bagian kiri)
 const imagePreview = document.getElementById("imagePreview");
-
-// Gambar hasil deteksi (bagian kanan)
 const resultImage = document.getElementById("resultImage");
-
-// Canvas untuk menggambar bounding box & segmentasi
 const canvas = document.getElementById("canvas");
-
-// Context canvas 2D
 const ctx = canvas.getContext("2d");
+const detectBtn = document.getElementById("detectBtn");
+const btnText = document.getElementById("btnText");
+const loadingSpinner = document.getElementById("loadingSpinner");
+const resultList = document.getElementById("resultList");
 
-// Tombol detect
-const detectBtn = document.querySelector(".detect-btn");
-
-
-// ======================================================
-// PREVIEW GAMBAR SAAT FILE DIPILIH
-// ======================================================
+// =========================================
+// PREVIEW GAMBAR
+// =========================================
 fileInput.addEventListener("change", () => {
-
-    // Ambil file pertama yang dipilih user
     const file = fileInput.files[0];
-
-    // Jika tidak ada file → hentikan
     if (!file) return;
 
-    // FileReader digunakan untuk membaca file gambar
     const reader = new FileReader();
-
-    // Saat file selesai dibaca
     reader.onload = (e) => {
-
-        // Tampilkan gambar preview
         imagePreview.src = e.target.result;
-
-        // Hapus class d-none agar gambar muncul
         imagePreview.classList.remove("d-none");
+        
+        // Reset hasil sebelumnya
+        resultImage.src = "";
+        resultList.innerHTML = "";
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
     };
-
-    // Membaca file sebagai URL base64
     reader.readAsDataURL(file);
 });
 
-
-// ======================================================
-// KETIKA TOMBOL DETECT DIKLIK
-// ======================================================
+// =========================================
+// TOMBOL DETECT
+// =========================================
 detectBtn.addEventListener("click", async () => {
-
-    // Cek apakah user sudah upload gambar
-    if (!fileInput.files[0]) {
-        alert("Pilih gambar dulu!");
+    const file = fileInput.files[0];
+    if (!file) {
+        alert("Silakan pilih gambar terlebih dahulu!");
         return;
     }
 
-    // Membuat FormData untuk dikirim ke API
+    // Loading state
+    btnText.textContent = "Processing...";
+    loadingSpinner.classList.remove("d-none");
+    detectBtn.disabled = true;
+
     const form = new FormData();
-
-    // File gambar
-    form.append("file", fileInput.files[0]);
-
-    // Confidence threshold
+    form.append("file", file);
     form.append("conf", "0.25");
-
-    // IoU threshold
     form.append("iou", "0.7");
-
-    // Ukuran image input model
     form.append("imgsz", "640");
 
     try {
-
-        // Request POST ke API
         const response = await fetch(url, {
             method: "POST",
-
-            // Header authorization
             headers: {
                 Authorization: `Bearer ${apiKey}`
             },
-
-            // Body berisi form data
             body: form
         });
 
-        // Konversi response menjadi JSON
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
         const data = await response.json();
+        console.log("API Response:", data);
 
-        // Debug hasil API
-        console.log(data);
-
-        // Menampilkan gambar asli di area hasil
+        // Tampilkan gambar asli di hasil
         resultImage.src = imagePreview.src;
 
-        // Setelah gambar selesai dimuat
         resultImage.onload = () => {
             drawResult(data);
         };
 
     } catch (err) {
-
-        // Jika terjadi error
         console.error(err);
-
-        alert("Error API!");
+        alert("Terjadi kesalahan saat memproses gambar. Coba lagi.");
+    } finally {
+        // Reset loading state
+        btnText.textContent = "Detect Sky";
+        loadingSpinner.classList.add("d-none");
+        detectBtn.disabled = false;
     }
 });
 
-
-// ======================================================
-// MEMBUAT WARNA BERDASARKAN NAMA CLASS
-// ======================================================
-function getColorFromClass(name) {
-
-    let hash = 0;
-
-    // Membuat hash dari string class name
-    for (let i = 0; i < name.length; i++) {
-        hash = name.charCodeAt(i) + ((hash << 5) - hash);
-    }
-
-    // Menghasilkan RGB dari hash
-    const r = (hash >> 0) & 255;
-    const g = (hash >> 8) & 255;
-    const b = (hash >> 16) & 255;
-
-    return { r, g, b };
-}
-
-
-// ======================================================
-// MENENTUKAN WARNA TEKS (HITAM / PUTIH)
-// Berdasarkan brightness background
-// ======================================================
-function getTextColor(r, g, b) {
-
-    // Rumus luminance
-    const luminance = (0.299 * r + 0.587 * g + 0.114 * b);
-
-    // Jika background terang → text hitam
-    // Jika gelap → text putih
-    return luminance > 186 ? "#000" : "#fff";
-}
-
-
-// ======================================================
-// FUNGSI UTAMA UNTUK MENAMPILKAN HASIL DETEKSI
-// ======================================================
+// =========================================
+// FUNGSI DRAW HASIL SEGMENTASI
+// =========================================
 function drawResult(data) {
-
-    // Ambil hasil prediksi dari response API
     const results = data.images?.[0]?.results || [];
+    resultList.innerHTML = "";
 
-    // Ambil elemen list hasil deteksi
-    const list = document.getElementById("resultList");
-
-    // Reset isi list sebelumnya
-    list.innerHTML = "";
-
-    // Ambil gambar hasil
     const img = resultImage;
 
-    // ==================================================
-    // Samakan ukuran canvas dengan ukuran gambar tampil
-    // ==================================================
+    // Sesuaikan ukuran canvas dengan gambar
     canvas.width = img.clientWidth;
     canvas.height = img.clientHeight;
 
-    // Scaling koordinat asli → ukuran canvas
     const scaleX = canvas.width / img.naturalWidth;
     const scaleY = canvas.height / img.naturalHeight;
 
-    // Bersihkan canvas sebelumnya
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // ==================================================
-    // LOOP SETIAP HASIL DETEKSI
-    // ==================================================
-    results.forEach(pred => {
+    results.forEach((pred, index) => {
+        // Bounding Box
+        const { x1, y1, x2, y2 } = pred.box || {};
+        if (!x1 && !y1) return;
 
-        // Ambil koordinat bounding box
-        const { x1, y1, x2, y2 } = pred.box;
-
-        console.log("RAW BOX:", x1, y1, x2, y2);
-
-        // Konversi koordinat ke ukuran canvas
         const left = x1 * scaleX;
         const top = y1 * scaleY;
-        const w = (x2 - x1) * scaleX;
-        const h = (y2 - y1) * scaleY;
+        const width = (x2 - x1) * scaleX;
+        const height = (y2 - y1) * scaleY;
 
-        // ==============================================
-        // Generate warna unik berdasarkan class
-        // ==============================================
-        const { r, g, b } = getColorFromClass(pred.name);
+        // Warna berdasarkan class
+        const { r, g, b } = getColorFromClass(pred.name || "sky");
+        const color = `rgb(${r}, ${g}, ${b})`;
 
-        // Warna background box
-        const bgColor = `rgb(${r}, ${g}, ${b})`;
+        // === DRAW BOUNDING BOX ===
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        ctx.strokeRect(left, top, width, height);
 
-        // Warna text label
-        const textColor = getTextColor(r, g, b);
+        // === LABEL ===
+        const label = `${pred.name || "sky"} (${(pred.confidence * 100).toFixed(1)}%)`;
+        ctx.fillStyle = color;
+        ctx.fillRect(left, top - 22, ctx.measureText(label).width + 10, 22);
 
-        // ==============================================
-        // DRAW BOUNDING BOX
-        // ==============================================
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 14px Arial";
+        ctx.fillText(label, left + 5, top - 7);
 
-        // Warna garis box
-        ctx.strokeStyle = bgColor;
-
-        // Ketebalan garis
-        ctx.lineWidth = 2;
-
-        // Gambar rectangle
-        ctx.strokeRect(left, top, w, h);
-
-        // ==============================================
-        // LABEL BACKGROUND
-        // ==============================================
-        ctx.fillStyle = bgColor;
-
-        // Background label
-        ctx.fillRect(left, top - 18, 120, 18);
-
-        // ==============================================
-        // TEXT LABEL
-        // ==============================================
-        ctx.fillStyle = textColor;
-
-        // Font text
-        ctx.font = "12px sans-serif";
-
-        // Isi text label
-        ctx.fillText(
-            `${pred.name} (${(pred.confidence * 100).toFixed(1)}%)`,
-            left + 5,
-            top - 5
-        );
-
-        // ==============================================
-        // TAMBAHKAN HASIL KE LIST HTML
-        // ==============================================
+        // === TAMBAH KE LIST ===
         const li = document.createElement("li");
+        li.className = "mb-1";
+        li.innerHTML = `✅ <strong>${label}</strong>`;
+        resultList.appendChild(li);
 
-        li.textContent =
-            `${pred.name} (${(pred.confidence * 100).toFixed(1)}%)`;
-
-        list.appendChild(li);
-
-        // ==============================================
-        // DRAW SEGMENTATION MASK
-        // ==============================================
-        if (pred.segments && pred.segments.x.length > 0) {
-
-            // Ambil titik koordinat segmentasi
+        // === DRAW SEGMENTATION MASK (Paling Penting untuk Sky) ===
+        if (pred.segments && pred.segments.x && pred.segments.x.length > 0) {
             const segX = pred.segments.x;
             const segY = pred.segments.y;
 
-            // Mulai path baru
             ctx.beginPath();
-
-            // Loop semua titik polygon
             for (let i = 0; i < segX.length; i++) {
-
-                // Scaling titik segmentasi
                 const x = segX[i] * scaleX;
                 const y = segY[i] * scaleY;
-
-                // Titik pertama
-                if (i === 0) {
-                    ctx.moveTo(x, y);
-                }
-
-                // Titik berikutnya
-                else {
-                    ctx.lineTo(x, y);
-                }
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
             }
-
-            // Tutup polygon
             ctx.closePath();
 
-            // ==========================================
-            // Isi warna transparan segmentasi
-            // ==========================================
-            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.3)`;
-
+            // Fill mask dengan transparan
+            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.35)`;
             ctx.fill();
 
-            // ==========================================
-            // Outline segmentasi
-            // ==========================================
-            ctx.strokeStyle = bgColor;
-
-            ctx.lineWidth = 2;
-
+            // Outline mask
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2.5;
             ctx.stroke();
         }
     });
+
+    if (results.length === 0) {
+        resultList.innerHTML = `<li class="text-muted">Tidak ada langit yang terdeteksi.</li>`;
+    }
+}
+
+// =========================================
+// HELPER FUNCTIONS
+// =========================================
+function getColorFromClass(name) {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const r = (hash >> 0) & 255;
+    const g = (hash >> 8) & 255;
+    const b = (hash >> 16) & 255;
+    return { r, g, b };
 }
