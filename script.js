@@ -23,7 +23,7 @@ function resetResult() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
-// Preview
+// Preview Gambar
 fileInput.addEventListener("change", () => {
     const file = fileInput.files[0];
     if (!file) return;
@@ -36,7 +36,7 @@ fileInput.addEventListener("change", () => {
     reader.readAsDataURL(file);
 });
 
-// Detect
+// Detect Button
 detectBtn.addEventListener("click", async () => {
     const file = fileInput.files[0];
     if (!file) return alert("Pilih gambar dulu!");
@@ -47,7 +47,7 @@ detectBtn.addEventListener("click", async () => {
 
     const form = new FormData();
     form.append("file", file);
-    form.append("conf", "0.01");
+    form.append("conf", "0.02");
     form.append("iou", "0.5");
     form.append("imgsz", "640");
 
@@ -57,13 +57,9 @@ detectBtn.addEventListener("click", async () => {
             headers: { Authorization: `Bearer ${apiKey}` },
             body: form
         });
-
         const data = await response.json();
-        console.log("FULL RESPONSE:", data);
-
         resultImage.src = imagePreview.src;
         resultImage.onload = () => drawResult(data);
-
     } catch (err) {
         console.error(err);
         alert("Error saat memproses gambar");
@@ -74,7 +70,7 @@ detectBtn.addEventListener("click", async () => {
     }
 });
 
-// Draw Result - Versi Diperbaiki
+// ================= DRAW RESULT + DETEKSI CERAH/MENDUNG =================
 function drawResult(data) {
     const results = data.images?.[0]?.results || [];
     resultList.innerHTML = "";
@@ -100,8 +96,10 @@ function drawResult(data) {
         const w = (x2 - x1) * scaleX;
         const h = (y2 - y1) * scaleY;
 
-        const confidence = pred.confidence;
-        const color = confidence > 0.5 ? "#22c55e" : "#eab308"; // Hijau jika yakin, kuning jika ragu
+        // Analisis warna untuk deteksi cerah/mendung
+        const skyCondition = analyzeSkyCondition(pred, img);
+
+        const color = skyCondition.isClear ? "#22c55e" : "#eab308";
 
         // Bounding Box
         ctx.strokeStyle = color;
@@ -109,19 +107,19 @@ function drawResult(data) {
         ctx.strokeRect(left, top, w, h);
 
         // Label
-        const label = `Sky (${(confidence * 100).toFixed(1)}%)`;
+        const label = `Sky ${skyCondition.label} (${(pred.confidence * 100).toFixed(1)}%)`;
         ctx.fillStyle = color;
-        ctx.fillRect(left, top - 28, 190, 28);
+        ctx.fillRect(left, top - 32, 260, 32);
         ctx.fillStyle = "#000";
         ctx.font = "bold 15px Arial";
-        ctx.fillText(label, left + 8, top - 8);
+        ctx.fillText(label, left + 8, top - 10);
 
         // List
         const li = document.createElement("li");
-        li.innerHTML = `✅ <strong>${label}</strong>`;
+        li.innerHTML = `✅ <strong>${label}</strong> <small>(${skyCondition.description})</small>`;
         resultList.appendChild(li);
 
-        // Mask (transparan)
+        // Mask
         if (pred.segments?.x?.length > 0) {
             ctx.beginPath();
             const segX = pred.segments.x;
@@ -132,11 +130,50 @@ function drawResult(data) {
                 j === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
             }
             ctx.closePath();
-            ctx.fillStyle = "rgba(34, 197, 94, 0.45)";
+            ctx.fillStyle = skyCondition.isClear ? "rgba(34, 197, 94, 0.45)" : "rgba(234, 179, 8, 0.45)";
             ctx.fill();
             ctx.strokeStyle = color;
-            ctx.lineWidth = 2;
+            ctx.lineWidth = 2.5;
             ctx.stroke();
         }
     });
+}
+
+// ================= ANALISIS CERAH / MENDUNG =================
+function analyzeSkyCondition(pred, img) {
+    // Ambil data pixel dari area langit (sederhana)
+    const canvasTemp = document.createElement("canvas");
+    const ctxTemp = canvasTemp.getContext("2d");
+    canvasTemp.width = img.naturalWidth;
+    canvasTemp.height = img.naturalHeight;
+    ctxTemp.drawImage(img, 0, 0);
+
+    let r = 0, g = 0, b = 0, count = 0;
+    const step = 5; // sampling setiap 5 pixel untuk performa
+
+    const { x1, y1, x2, y2 } = pred.box;
+
+    for (let y = Math.floor(y1); y < y2; y += step) {
+        for (let x = Math.floor(x1); x < x2; x += step) {
+            const pixel = ctxTemp.getImageData(x, y, 1, 1).data;
+            r += pixel[0];
+            g += pixel[1];
+            b += pixel[2];
+            count++;
+        }
+    }
+
+    const avgR = r / count;
+    const avgG = g / count;
+    const avgB = b / count;
+    const brightness = (avgR + avgG + avgB) / 3;
+
+    // Logika sederhana
+    if (avgB > avgR + 15 && avgB > avgG + 15 && brightness > 100) {
+        return { isClear: true, label: "(Cerah)", description: "Langit Biru" };
+    } else if (brightness < 120) {
+        return { isClear: false, label: "(Mendung)", description: "Langit Mendung" };
+    } else {
+        return { isClear: false, label: "(Berawan)", description: "Langit Berawan" };
+    }
 }
