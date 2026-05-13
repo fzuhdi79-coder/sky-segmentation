@@ -23,7 +23,7 @@ function resetResult() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
-// Preview
+// Preview Gambar
 fileInput.addEventListener("change", () => {
     const file = fileInput.files[0];
     if (!file) return;
@@ -36,7 +36,7 @@ fileInput.addEventListener("change", () => {
     reader.readAsDataURL(file);
 });
 
-// Detect
+// Detect Button
 detectBtn.addEventListener("click", async () => {
     const file = fileInput.files[0];
     if (!file) return alert("Pilih gambar dulu!");
@@ -47,8 +47,8 @@ detectBtn.addEventListener("click", async () => {
 
     const form = new FormData();
     form.append("file", file);
-    form.append("conf", "0.05");   // Diturunkan lagi
-    form.append("iou", "0.5");
+    form.append("conf", "0.01");     // Sangat rendah
+    form.append("iou", "0.45");
     form.append("imgsz", "640");
 
     try {
@@ -74,21 +74,22 @@ detectBtn.addEventListener("click", async () => {
     }
 });
 
-// Draw Result
+// ================= DRAW RESULT =================
 function drawResult(data) {
     const results = data.images?.[0]?.results || [];
     resultList.innerHTML = "";
 
+    console.log("Jumlah hasil deteksi:", results.length);
+
     if (results.length === 0) {
         resultList.innerHTML = `
             <li class="text-warning">
-                ⚠️ Tidak ada langit terdeteksi pada gambar ini.<br>
-                <small>Coba gunakan gambar langit yang lebih cerah atau biru.</small>
+                ⚠️ Model belum mendeteksi langit pada gambar ini.<br>
+                <small>Coba pakai gambar langit yang cerah dan biru.</small>
             </li>`;
         return;
     }
 
-    // ... (kode draw yang sama seperti sebelumnya)
     const img = resultImage;
     canvas.width = img.clientWidth;
     canvas.height = img.clientHeight;
@@ -114,7 +115,7 @@ function drawResult(data) {
         const label = `Sky (${(pred.confidence * 100).toFixed(1)}%)`;
         
         ctx.fillStyle = color;
-        ctx.fillRect(left, top - 28, 180, 28);
+        ctx.fillRect(left, top - 30, 200, 30);
         ctx.fillStyle = "#000";
         ctx.font = "bold 15px Arial";
         ctx.fillText(label, left + 8, top - 8);
@@ -122,5 +123,20 @@ function drawResult(data) {
         const li = document.createElement("li");
         li.innerHTML = `✅ ${label}`;
         resultList.appendChild(li);
+
+        // Mask
+        if (pred.segments?.x?.length > 0) {
+            ctx.beginPath();
+            pred.segments.x.forEach((px, idx) => {
+                const x = px * scaleX;
+                const y = pred.segments.y[idx] * scaleY;
+                idx === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            });
+            ctx.closePath();
+            ctx.fillStyle = "rgba(34, 197, 94, 0.4)";
+            ctx.fill();
+            ctx.strokeStyle = color;
+            ctx.stroke();
+        }
     });
 }
