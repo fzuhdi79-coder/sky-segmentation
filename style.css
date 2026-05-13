@@ -35,6 +35,11 @@ body {
     overflow: hidden;
 }
 
+.text-muted.fs-5 {
+    color: #ffffff !important;
+    opacity: 1; /* Memastikan tidak transparan */
+}
+
 #canvas {
     position: absolute;
     top: 0; left: 0;
