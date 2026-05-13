@@ -70,7 +70,7 @@ detectBtn.addEventListener("click", async () => {
     }
 });
 
-// ================= DRAW RESULT + DETEKSI CERAH/MENDUNG =================
+// ================= DRAW RESULT =================
 function drawResult(data) {
     const results = data.images?.[0]?.results || [];
     resultList.innerHTML = "";
@@ -96,9 +96,7 @@ function drawResult(data) {
         const w = (x2 - x1) * scaleX;
         const h = (y2 - y1) * scaleY;
 
-        // Analisis warna untuk deteksi cerah/mendung
         const skyCondition = analyzeSkyCondition(pred, img);
-
         const color = skyCondition.isClear ? "#22c55e" : "#eab308";
 
         // Bounding Box
@@ -109,10 +107,10 @@ function drawResult(data) {
         // Label
         const label = `Sky ${skyCondition.label} (${(pred.confidence * 100).toFixed(1)}%)`;
         ctx.fillStyle = color;
-        ctx.fillRect(left, top - 32, 260, 32);
+        ctx.fillRect(left, top - 34, 280, 34);
         ctx.fillStyle = "#000";
         ctx.font = "bold 15px Arial";
-        ctx.fillText(label, left + 8, top - 10);
+        ctx.fillText(label, left + 8, top - 12);
 
         // List
         const li = document.createElement("li");
@@ -139,9 +137,8 @@ function drawResult(data) {
     });
 }
 
-// ================= ANALISIS CERAH / MENDUNG =================
+// ================= ANALISIS CERAH / MENDUNG (Diperbaiki) =================
 function analyzeSkyCondition(pred, img) {
-    // Ambil data pixel dari area langit (sederhana)
     const canvasTemp = document.createElement("canvas");
     const ctxTemp = canvasTemp.getContext("2d");
     canvasTemp.width = img.naturalWidth;
@@ -149,13 +146,12 @@ function analyzeSkyCondition(pred, img) {
     ctxTemp.drawImage(img, 0, 0);
 
     let r = 0, g = 0, b = 0, count = 0;
-    const step = 5; // sampling setiap 5 pixel untuk performa
-
+    const step = 6;
     const { x1, y1, x2, y2 } = pred.box;
 
     for (let y = Math.floor(y1); y < y2; y += step) {
         for (let x = Math.floor(x1); x < x2; x += step) {
-            const pixel = ctxTemp.getImageData(x, y, 1, 1).data;
+            const pixel = ctxTemp.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
             r += pixel[0];
             g += pixel[1];
             b += pixel[2];
@@ -167,13 +163,19 @@ function analyzeSkyCondition(pred, img) {
     const avgG = g / count;
     const avgB = b / count;
     const brightness = (avgR + avgG + avgB) / 3;
+    const blueDominance = avgB - (avgR + avgG) / 2;
 
-    // Logika sederhana
-    if (avgB > avgR + 15 && avgB > avgG + 15 && brightness > 100) {
+    // Logika yang lebih baik
+    if (blueDominance > 25 && brightness > 110) {
         return { isClear: true, label: "(Cerah)", description: "Langit Biru" };
-    } else if (brightness < 120) {
+    } 
+    else if (brightness < 110 || (avgR > 140 && avgG > 140 && avgB > 140)) {
         return { isClear: false, label: "(Mendung)", description: "Langit Mendung" };
-    } else {
+    } 
+    else if (brightness < 140) {
         return { isClear: false, label: "(Berawan)", description: "Langit Berawan" };
+    } 
+    else {
+        return { isClear: true, label: "(Cerah)", description: "Langit Cerah" };
     }
 }
