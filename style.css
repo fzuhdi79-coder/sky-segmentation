@@ -1,42 +1,18 @@
-/* =======================================================
-   GLOBAL STYLES
-   ======================================================= */
-* {
-    box-sizing: border-box;
-}
+* { box-sizing: border-box; }
 
 body {
     background: linear-gradient(135deg, #0f172a, #020617);
     color: #f8fafc;
-    font-family: 'Segoe UI', system-ui, sans-serif;
     min-height: 100vh;
 }
 
-/* =======================================================
-   CARD STYLING
-   ======================================================= */
 .card {
     background: #1e293b;
-    color: #f1f5f9;
-    border-radius: 16px;
     border: none;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
 }
 
-/* =======================================================
-   HEADER
-   ======================================================= */
-h1, h2, h3, h4, h5, h6 {
-    color: #f8fafc;
-}
-
-.text-muted {
-    color: #cbd5f5 !important;
-}
-
-/* =======================================================
-   UPLOAD BOX
-   ======================================================= */
 .upload-box {
     border: 3px dashed #64748b;
     border-radius: 16px;
@@ -44,86 +20,38 @@ h1, h2, h3, h4, h5, h6 {
     cursor: pointer;
     transition: all 0.3s ease;
     background: rgba(255,255,255,0.03);
-    min-height: 220px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    min-height: 240px;
 }
 
 .upload-box:hover {
     border-color: #38bdf8;
-    background: rgba(56, 189, 248, 0.08);
-    transform: translateY(-3px);
+    background: rgba(56,189,248,0.1);
 }
 
-/* =======================================================
-   IMAGE PREVIEW & CANVAS
-   ======================================================= */
 .image-preview {
     position: relative;
-    display: inline-block;
     background: #020617;
     border-radius: 12px;
     overflow: hidden;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-}
-
-#resultImage, #canvas {
-    max-width: 100%;
-    height: auto;
-    display: block;
 }
 
 #canvas {
     position: absolute;
-    top: 0;
-    left: 0;
+    top: 0; left: 0;
     pointer-events: none;
-    z-index: 10;
 }
 
-/* =======================================================
-   BUTTON
-   ======================================================= */
 .detect-btn {
-    font-size: 1.1rem;
     padding: 14px;
+    font-size: 1.1rem;
     font-weight: 600;
     border-radius: 10px;
-    transition: all 0.3s ease;
 }
 
-.btn-primary {
-    background-color: #38bdf8;
-    border: none;
-    color: #0f172a;
-}
-
-.btn-primary:hover {
-    background-color: #0ea5e9;
-    transform: translateY(-2px);
-}
-
-/* =======================================================
-   RESULT BOX
-   ======================================================= */
 .result-box {
     background: #020617;
     border: 1px solid #334155;
     border-radius: 12px;
-    color: #e2e8f0;
-}
-
-.result-box h6 {
-    color: #f1f5f9;
-    border-bottom: 1px solid #334155;
-    padding-bottom: 10px;
-    margin-bottom: 15px;
-}
-
-.result-box ul {
-    list-style: none;
-    padding-left: 0;
 }
 
 .result-box li {
@@ -133,24 +61,4 @@ h1, h2, h3, h4, h5, h6 {
 
 .result-box li:last-child {
     border-bottom: none;
-}
-
-/* =======================================================
-   RESPONSIVE
-   ======================================================= */
-@media (max-width: 992px) {
-    .image-preview {
-        max-width: 100%;
-    }
-    
-    #resultImage {
-        max-width: 100%;
-    }
-}
-
-/* =======================================================
-   FOOTER
-   ======================================================= */
-footer, small {
-    color: #94a3b8 !important;
 }
