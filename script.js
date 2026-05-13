@@ -131,7 +131,7 @@ function drawResult(data) {
     });
 }
 
-// ================= ANALISIS LOGIKA (DIPERBAIKI) =================
+// ================= ANALISIS CERAH / MENDUNG (Biner) =================
 function analyzeSkyCondition(pred, img) {
     const canvasTemp = document.createElement("canvas");
     const ctxTemp = canvasTemp.getContext("2d", { willReadFrequently: true });
@@ -156,34 +156,26 @@ function analyzeSkyCondition(pred, img) {
     const avgR = r / count;
     const avgG = g / count;
     const avgB = b / count;
-    const brightness = (avgR + avgG + avgB) / 3;
+    
+    // Indikator utama: seberapa dominan warna biru dibanding merah dan hijau
     const blueDominance = avgB - ((avgR + avgG) / 2);
-    // Grayness: seberapa mirip R, G, dan B. Semakin kecil, semakin abu-abu/putih.
-    const colorGap = Math.max(avgR, avgG, avgB) - Math.min(avgR, avgG, avgB);
 
-    console.log(`[DEBUG] BlueDom: ${blueDominance.toFixed(1)} | Bright: ${brightness.toFixed(0)} | Gap: ${colorGap.toFixed(1)}`);
+    console.log(`[DEBUG] BlueDominance: ${blueDominance.toFixed(1)}`);
 
-    // 1. PRIORITAS UTAMA: Dominasi Biru
-    // Jika Biru jauh lebih tinggi dari R & G, hampir pasti itu Cerah/Biru
+    // LOGIKA BINER:
+    // Jika blueDominance di atas 25, kita anggap Cerah. 
+    // Di bawah itu (termasuk awan putih atau abu-abu), kita anggap Mendung.
     if (blueDominance > 25) {
-        return { isClear: true, label: "(Cerah)", description: "Langit Biru Bersih" };
+        return { 
+            isClear: true, 
+            label: "(Cerah)", 
+            description: "Langit Biru Terdeteksi" 
+        };
+    } else {
+        return { 
+            isClear: false, 
+            label: "(Mendung)", 
+            description: "Langit Mendung / Tidak Biru" 
+        };
     }
-
-    // 2. PRIORITAS KEDUA: Cek apakah warnanya "Netral" (R, G, B mirip)
-    // Jika selisih antar warna kecil, berarti itu awan putih atau mendung abu-abu
-    if (colorGap < 30) {
-        if (brightness > 185) {
-            return { isClear: false, label: "(Berawan)", description: "Awan Putih Dominan" };
-        } else {
-            return { isClear: false, label: "(Mendung)", description: "Langit Mendung Abu-abu" };
-        }
-    }
-
-    // 3. PRIORITAS KETIGA: Kondisi tanggung (biru tipis tapi terang)
-    if (blueDominance > 10 && brightness > 150) {
-        return { isClear: true, label: "(Cerah)", description: "Langit Cerah Berawan" };
-    }
-
-    // Default Fallback: Jika gelap dan tidak biru
-    return { isClear: false, label: "(Mendung)", description: "Langit Gelap/Mendung" };
 }
