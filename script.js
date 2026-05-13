@@ -17,9 +17,7 @@ const btnText = document.getElementById("btnText");
 const loadingSpinner = document.getElementById("loadingSpinner");
 const resultList = document.getElementById("resultList");
 
-// =========================================
-// PREVIEW GAMBAR + DRAG & DROP
-// =========================================
+// Preview + Drag & Drop
 fileInput.addEventListener("change", handleFile);
 
 function handleFile() {
@@ -30,34 +28,19 @@ function handleFile() {
     reader.onload = (e) => {
         imagePreview.src = e.target.result;
         imagePreview.classList.remove("d-none");
-        
-        // Reset hasil sebelumnya
-        resultImage.src = "";
-        resultList.innerHTML = "";
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        resetResult();
     };
     reader.readAsDataURL(file);
 }
 
-// Drag & Drop Support
-const uploadLabel = document.getElementById("uploadLabel");
-uploadLabel.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    uploadLabel.style.borderColor = "#38bdf8";
-});
-uploadLabel.addEventListener("dragleave", () => {
-    uploadLabel.style.borderColor = "";
-});
-uploadLabel.addEventListener("drop", (e) => {
-    e.preventDefault();
-    uploadLabel.style.borderColor = "";
-    fileInput.files = e.dataTransfer.files;
-    handleFile();
-});
+// Reset hasil sebelumnya
+function resetResult() {
+    resultImage.src = "";
+    resultList.innerHTML = "";
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
 
-// =========================================
-// DETECT BUTTON
-// =========================================
+// Detect Button
 detectBtn.addEventListener("click", async () => {
     const file = fileInput.files[0];
     if (!file) {
@@ -71,8 +54,8 @@ detectBtn.addEventListener("click", async () => {
 
     const form = new FormData();
     form.append("file", file);
-    form.append("conf", "0.15");     // Diturunkan agar lebih sensitif
-    form.append("iou", "0.6");
+    form.append("conf", "0.05");      // Sangat rendah untuk testing
+    form.append("iou", "0.5");
     form.append("imgsz", "640");
 
     try {
@@ -83,7 +66,7 @@ detectBtn.addEventListener("click", async () => {
         });
 
         const data = await response.json();
-        console.log("Full API Response:", data);
+        console.log("🔍 Full Response:", data);   // Untuk debug
 
         resultImage.src = imagePreview.src;
 
@@ -93,7 +76,7 @@ detectBtn.addEventListener("click", async () => {
 
     } catch (err) {
         console.error(err);
-        alert("Terjadi kesalahan saat memproses gambar.");
+        alert("Error saat memproses gambar");
     } finally {
         btnText.textContent = "Detect Sky";
         loadingSpinner.classList.add("d-none");
@@ -101,28 +84,34 @@ detectBtn.addEventListener("click", async () => {
     }
 });
 
-// =========================================
-// DRAW RESULT
-// =========================================
+// Draw Result dengan debug lebih kuat
 function drawResult(data) {
     const results = data.images?.[0]?.results || [];
-    resultList.innerHTML = "";
+    console.log("Jumlah hasil deteksi:", results.length);
+    console.log("Detail hasil:", results);
 
+    resultList.innerHTML = "";
     const img = resultImage;
+
     canvas.width = img.clientWidth;
     canvas.height = img.clientHeight;
-
     const scaleX = canvas.width / img.naturalWidth;
     const scaleY = canvas.height / img.naturalHeight;
-
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     if (results.length === 0) {
-        resultList.innerHTML = `<li class="text-warning">⚠️ Tidak ada langit terdeteksi. Coba gambar lain atau turunkan confidence.</li>`;
+        resultList.innerHTML = `
+            <li class="text-danger">
+                ⚠️ Tidak ada objek terdeteksi.<br>
+                <small>Confidence diturunkan ke 0.05</small>
+            </li>`;
         return;
     }
 
     results.forEach(pred => {
+        console.log("Class terdeteksi:", pred.name, "| Confidence:", pred.confidence);
+
+        // ... (sisa kode drawResult sama seperti sebelumnya)
         const { x1, y1, x2, y2 } = pred.box || {};
         if (x1 === undefined) return;
 
@@ -134,22 +123,18 @@ function drawResult(data) {
         const { r, g, b } = getColorFromClass(pred.name || "sky");
         const color = `rgb(${r},${g},${b})`;
 
-        // Bounding Box
         ctx.strokeStyle = color;
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 4;
         ctx.strokeRect(left, top, width, height);
 
-        // Label
-        const label = `${pred.name || "sky"} (${(pred.confidence * 100).toFixed(1)}%)`;
+        const label = `${pred.name || "sky"} (${(pred.confidence*100).toFixed(1)}%)`;
         ctx.fillStyle = color;
-        const textWidth = ctx.measureText(label).width;
-        ctx.fillRect(left, top - 25, textWidth + 10, 25);
+        ctx.fillRect(left, top - 28, ctx.measureText(label).width + 12, 28);
 
         ctx.fillStyle = "#fff";
-        ctx.font = "bold 14px Arial";
-        ctx.fillText(label, left + 5, top - 8);
+        ctx.font = "bold 15px Arial";
+        ctx.fillText(label, left + 6, top - 10);
 
-        // List
         const li = document.createElement("li");
         li.innerHTML = `✅ <strong>${label}</strong>`;
         resultList.appendChild(li);
@@ -165,17 +150,13 @@ function drawResult(data) {
                 i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
             }
             ctx.closePath();
-
-            ctx.fillStyle = `rgba(${r},${g},${b}, 0.35)`;
+            ctx.fillStyle = `rgba(${r},${g},${b}, 0.4)`;
             ctx.fill();
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 2.5;
             ctx.stroke();
         }
     });
 }
 
-// Helper Warna
 function getColorFromClass(name) {
     let hash = 0;
     for (let i = 0; i < name.length; i++) {
