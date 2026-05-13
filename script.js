@@ -74,17 +74,13 @@ detectBtn.addEventListener("click", async () => {
     }
 });
 
-// Draw Result
+// Draw Result - Versi Diperbaiki
 function drawResult(data) {
     const results = data.images?.[0]?.results || [];
     resultList.innerHTML = "";
 
     if (results.length === 0) {
-        resultList.innerHTML = `
-            <li class="text-warning">
-                ⚠️ Model belum bisa mendeteksi langit pada gambar ini.<br>
-                <small>Gunakan gambar langit cerah dengan banyak awan putih.</small>
-            </li>`;
+        resultList.innerHTML = `<li class="text-warning">⚠️ Tidak ada langit terdeteksi</li>`;
         return;
     }
 
@@ -104,22 +100,43 @@ function drawResult(data) {
         const w = (x2 - x1) * scaleX;
         const h = (y2 - y1) * scaleY;
 
-        const color = "#22c55e";
+        const confidence = pred.confidence;
+        const color = confidence > 0.5 ? "#22c55e" : "#eab308"; // Hijau jika yakin, kuning jika ragu
 
+        // Bounding Box
         ctx.strokeStyle = color;
-        ctx.lineWidth = 4;
+        ctx.lineWidth = 3;
         ctx.strokeRect(left, top, w, h);
 
-        const label = `Sky (${(pred.confidence * 100).toFixed(1)}%)`;
-        
+        // Label
+        const label = `Sky (${(confidence * 100).toFixed(1)}%)`;
         ctx.fillStyle = color;
-        ctx.fillRect(left, top - 30, 200, 30);
+        ctx.fillRect(left, top - 28, 190, 28);
         ctx.fillStyle = "#000";
         ctx.font = "bold 15px Arial";
         ctx.fillText(label, left + 8, top - 8);
 
+        // List
         const li = document.createElement("li");
-        li.innerHTML = `✅ ${label}`;
+        li.innerHTML = `✅ <strong>${label}</strong>`;
         resultList.appendChild(li);
+
+        // Mask (transparan)
+        if (pred.segments?.x?.length > 0) {
+            ctx.beginPath();
+            const segX = pred.segments.x;
+            const segY = pred.segments.y;
+            for (let j = 0; j < segX.length; j++) {
+                const x = segX[j] * scaleX;
+                const y = segY[j] * scaleY;
+                j === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fillStyle = "rgba(34, 197, 94, 0.45)";
+            ctx.fill();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
     });
 }
