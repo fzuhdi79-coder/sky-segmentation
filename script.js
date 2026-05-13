@@ -4,14 +4,11 @@
 const url = "https://predict-6a047d4a843ee5421261-dproatj77a-et.a.run.app/predict";
 const apiKey = "ul_a8b80a07c79ff47679476137091f3136eac6aa75";
 
-// =========================================
-// ELEMENTS
-// =========================================
 const fileInput = document.getElementById("fileInput");
 const imagePreview = document.getElementById("imagePreview");
 const resultImage = document.getElementById("resultImage");
 const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+const ctx = canvas.getContext("2d", { willReadFrequently: true });
 const detectBtn = document.getElementById("detectBtn");
 const btnText = document.getElementById("btnText");
 const loadingSpinner = document.getElementById("loadingSpinner");
@@ -23,7 +20,6 @@ function resetResult() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
-// Preview
 fileInput.addEventListener("change", () => {
     const file = fileInput.files[0];
     if (!file) return;
@@ -36,7 +32,6 @@ fileInput.addEventListener("change", () => {
     reader.readAsDataURL(file);
 });
 
-// Detect
 detectBtn.addEventListener("click", async () => {
     const file = fileInput.files[0];
     if (!file) return alert("Pilih gambar dulu!");
@@ -47,7 +42,7 @@ detectBtn.addEventListener("click", async () => {
 
     const form = new FormData();
     form.append("file", file);
-    form.append("conf", "0.01");
+    form.append("conf", "0.01"); // Tetap rendah agar semua area terdeteksi
     form.append("iou", "0.45");
     form.append("imgsz", "640");
 
@@ -70,7 +65,6 @@ detectBtn.addEventListener("click", async () => {
     }
 });
 
-// ================= DRAW RESULT =================
 function drawResult(data) {
     const results = data.images?.[0]?.results || [];
     resultList.innerHTML = "";
@@ -89,17 +83,21 @@ function drawResult(data) {
 
     results.forEach((pred) => {
         const { x1, y1, x2, y2 } = pred.box || {};
-        if (!x1) return;
+        if (x1 === undefined) return;
+
+        const sky = analyzeSkyCondition(pred, img);
+        
+        // Warna Bounding Box: Cerah = Hijau, Berawan = Biru Muda, Mendung = Oranye
+        let color = "#22c55e"; 
+        if (sky.label === "(Berawan)") color = "#3b82f6";
+        if (sky.label === "(Mendung)") color = "#f59e0b";
 
         const left = x1 * scaleX;
         const top = y1 * scaleY;
         const w = (x2 - x1) * scaleX;
         const h = (y2 - y1) * scaleY;
 
-        const sky = analyzeSkyCondition(pred, img);
-        const color = sky.isClear ? "#22c55e" : "#f59e0b";
-
-        // Mask Segmentasi
+        // Masking
         if (pred.segments?.x?.length > 0) {
             ctx.beginPath();
             for (let j = 0; j < pred.segments.x.length; j++) {
@@ -108,80 +106,84 @@ function drawResult(data) {
                 j === 0 ? ctx.moveTo(sx, sy) : ctx.lineTo(sx, sy);
             }
             ctx.closePath();
-            ctx.fillStyle = sky.isClear ? "rgba(34, 197, 94, 0.45)" : "rgba(245, 158, 11, 0.45)";
+            ctx.fillStyle = color + "73"; // Transparansi 45%
             ctx.fill();
             ctx.strokeStyle = color;
-            ctx.lineWidth = 2.5;
+            ctx.lineWidth = 2;
             ctx.stroke();
         }
 
-        // Bounding Box
+        // Bounding Box & Label
         ctx.strokeStyle = color;
         ctx.lineWidth = 3;
         ctx.strokeRect(left, top, w, h);
 
-        // Label
         const label = `Sky ${sky.label} (${(pred.confidence * 100).toFixed(1)}%)`;
         ctx.fillStyle = color;
-        ctx.fillRect(left, top - 34, 290, 34);
-        ctx.fillStyle = "#000";
-        ctx.font = "bold 15px Arial";
-        ctx.fillText(label, left + 8, top - 12);
+        ctx.fillRect(left, top - 30, 260, 30);
+        ctx.fillStyle = "#fff";
+        ctx.font = "bold 14px Arial";
+        ctx.fillText(label, left + 8, top - 10);
 
-        // List
         const li = document.createElement("li");
-        li.innerHTML = `✅ <strong>${label}</strong><br><small>${sky.description}</small>`;
+        li.innerHTML = `✅ <strong style="color:${color}">${label}</strong><br><small>${sky.description}</small>`;
         resultList.appendChild(li);
     });
 }
 
-// ================= ANALISIS CERAH / MENDUNG (Versi Paling Sensitif) =================
+// ================= ANALISIS LOGIKA (DIPERBAIKI) =================
 function analyzeSkyCondition(pred, img) {
     const canvasTemp = document.createElement("canvas");
     const ctxTemp = canvasTemp.getContext("2d", { willReadFrequently: true });
-    
     const { x1, y1, x2, y2 } = pred.box;
-    const width = Math.floor(x2 - x1);
-    const height = Math.floor(y2 - y1);
+    const width = Math.max(1, Math.floor(x2 - x1));
+    const height = Math.max(1, Math.floor(y2 - y1));
 
     canvasTemp.width = width;
     canvasTemp.height = height;
     ctxTemp.drawImage(img, x1, y1, width, height, 0, 0, width, height);
 
     const pixels = ctxTemp.getImageData(0, 0, width, height).data;
-    
     let r = 0, g = 0, b = 0, count = 0;
-    let maxBrightness = 0;
 
-    for (let i = 0; i < pixels.length; i += 8) {
+    for (let i = 0; i < pixels.length; i += 16) {
         r += pixels[i];
         g += pixels[i+1];
         b += pixels[i+2];
         count++;
-
-        const brightness = (pixels[i] + pixels[i+1] + pixels[i+2]) / 3;
-        if (brightness > maxBrightness) maxBrightness = brightness;
     }
 
     const avgR = r / count;
     const avgG = g / count;
     const avgB = b / count;
     const brightness = (avgR + avgG + avgB) / 3;
-    const grayness = Math.max(Math.abs(avgR - avgG), Math.abs(avgG - avgB), Math.abs(avgB - avgR));
-    const blueDominance = avgB - (avgR + avgG)/2;
+    const blueDominance = avgB - ((avgR + avgG) / 2);
+    // Grayness: seberapa mirip R, G, dan B. Semakin kecil, semakin abu-abu/putih.
+    const colorGap = Math.max(avgR, avgG, avgB) - Math.min(avgR, avgG, avgB);
 
-    console.log(`[DEBUG] R:${avgR.toFixed(0)} G:${avgG.toFixed(0)} B:${avgB.toFixed(0)} | Bright:${brightness.toFixed(0)} | Gray:${grayness.toFixed(1)} | BlueDom:${blueDominance.toFixed(1)}`);
+    console.log(`[DEBUG] BlueDom: ${blueDominance.toFixed(1)} | Bright: ${brightness.toFixed(0)} | Gap: ${colorGap.toFixed(1)}`);
 
-    // ================= LOGIKA BARU (Lebih ketat untuk mendung) =================
-    if (brightness < 155 && grayness < 35) {
-        return { isClear: false, label: "(Mendung)", description: "Langit Mendung" };
-    }
-    if (brightness < 170 || grayness < 45) {
-        return { isClear: false, label: "(Berawan)", description: "Langit Berawan" };
-    }
-    if (blueDominance > 35 && brightness > 160) {
-        return { isClear: true, label: "(Cerah)", description: "Langit Biru Cerah" };
+    // 1. PRIORITAS UTAMA: Dominasi Biru
+    // Jika Biru jauh lebih tinggi dari R & G, hampir pasti itu Cerah/Biru
+    if (blueDominance > 25) {
+        return { isClear: true, label: "(Cerah)", description: "Langit Biru Bersih" };
     }
 
-    return { isClear: false, label: "(Berawan)", description: "Langit Berawan" };
+    // 2. PRIORITAS KEDUA: Cek apakah warnanya "Netral" (R, G, B mirip)
+    // Jika selisih antar warna kecil, berarti itu awan putih atau mendung abu-abu
+    if (colorGap < 30) {
+        if (brightness > 185) {
+            return { isClear: false, label: "(Berawan)", description: "Awan Putih Dominan" };
+        } else {
+            return { isClear: false, label: "(Mendung)", description: "Langit Mendung Abu-abu" };
+        }
+    }
+
+    // 3. PRIORITAS KETIGA: Kondisi tanggung (biru tipis tapi terang)
+    if (blueDominance > 10 && brightness > 150) {
+        return { isClear: true, label: "(Cerah)", description: "Langit Cerah Berawan" };
+    }
+
+    // Default Fallback: Jika gelap dan tidak biru
+    return { isClear: false, label: "(Mendung)", description: "Langit Gelap/Mendung" };
 }
