@@ -23,7 +23,7 @@ function resetResult() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
-// Preview Gambar
+// Preview
 fileInput.addEventListener("change", () => {
     const file = fileInput.files[0];
     if (!file) return;
@@ -36,7 +36,7 @@ fileInput.addEventListener("change", () => {
     reader.readAsDataURL(file);
 });
 
-// Detect Button
+// Detect
 detectBtn.addEventListener("click", async () => {
     const file = fileInput.files[0];
     if (!file) return alert("Pilih gambar dulu!");
@@ -47,7 +47,7 @@ detectBtn.addEventListener("click", async () => {
 
     const form = new FormData();
     form.append("file", file);
-    form.append("conf", "0.1");
+    form.append("conf", "0.05");   // Diturunkan lagi
     form.append("iou", "0.5");
     form.append("imgsz", "640");
 
@@ -59,6 +59,8 @@ detectBtn.addEventListener("click", async () => {
         });
 
         const data = await response.json();
+        console.log("=== FULL API RESPONSE ===", data);
+
         resultImage.src = imagePreview.src;
         resultImage.onload = () => drawResult(data);
 
@@ -72,16 +74,21 @@ detectBtn.addEventListener("click", async () => {
     }
 });
 
-// ================= DRAW RESULT =================
+// Draw Result
 function drawResult(data) {
     const results = data.images?.[0]?.results || [];
     resultList.innerHTML = "";
 
     if (results.length === 0) {
-        resultList.innerHTML = `<li class="text-danger">Tidak ada deteksi</li>`;
+        resultList.innerHTML = `
+            <li class="text-warning">
+                ⚠️ Tidak ada langit terdeteksi pada gambar ini.<br>
+                <small>Coba gunakan gambar langit yang lebih cerah atau biru.</small>
+            </li>`;
         return;
     }
 
+    // ... (kode draw yang sama seperti sebelumnya)
     const img = resultImage;
     canvas.width = img.clientWidth;
     canvas.height = img.clientHeight;
@@ -98,45 +105,22 @@ function drawResult(data) {
         const w = (x2 - x1) * scaleX;
         const h = (y2 - y1) * scaleY;
 
-        // Warna hijau untuk langit
         const color = "#22c55e";
 
-        // Bounding Box
         ctx.strokeStyle = color;
         ctx.lineWidth = 4;
         ctx.strokeRect(left, top, w, h);
 
-        // Label
-        const className = pred.name || "sky";
-        const label = `${className} (${(pred.confidence * 100).toFixed(1)}%)`;
+        const label = `Sky (${(pred.confidence * 100).toFixed(1)}%)`;
         
         ctx.fillStyle = color;
-        ctx.fillRect(left, top - 28, 220, 28);
+        ctx.fillRect(left, top - 28, 180, 28);
         ctx.fillStyle = "#000";
         ctx.font = "bold 15px Arial";
         ctx.fillText(label, left + 8, top - 8);
 
-        // List hasil
         const li = document.createElement("li");
-        li.innerHTML = `✅ <strong>${label}</strong>`;
+        li.innerHTML = `✅ ${label}`;
         resultList.appendChild(li);
-
-        // Segmentation Mask
-        if (pred.segments?.x?.length > 0) {
-            ctx.beginPath();
-            const segX = pred.segments.x;
-            const segY = pred.segments.y;
-            for (let j = 0; j < segX.length; j++) {
-                const x = segX[j] * scaleX;
-                const y = segY[j] * scaleY;
-                j === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-            }
-            ctx.closePath();
-            ctx.fillStyle = "rgba(34, 197, 94, 0.35)";
-            ctx.fill();
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 2;
-            ctx.stroke();
-        }
     });
 }
