@@ -6,59 +6,18 @@
     <title>Sky Segmentation</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
-    <style>
-        .upload-box {
-            border: 3px dashed #0d6efd;
-            border-radius: 12px;
-            padding: 60px 20px;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            background-color: #f8f9fa;
-        }
-        .upload-box:hover {
-            background-color: #e7f1ff;
-            border-color: #0b5ed7;
-        }
-        .image-preview {
-            position: relative;
-            display: inline-block;
-            max-width: 100%;
-        }
-        #resultImage, #canvas {
-            max-width: 100%;
-            height: auto;
-            border-radius: 12px;
-        }
-        #canvas {
-            position: absolute;
-            top: 0;
-            left: 0;
-            pointer-events: none;
-        }
-        .result-box {
-            background-color: #f8f9fa;
-            border: 1px solid #dee2e6;
-        }
-        .detect-btn {
-            font-size: 1.1rem;
-            padding: 12px;
-        }
-    </style>
 </head>
 <body>
 <div class="container py-5">
-    <!-- Header -->
     <div class="text-center mb-5">
         <h1 class="fw-bold text-primary">Sky Segmentation</h1>
-        <p class="text-muted fs-5">
-            AI-powered sky region segmentation and analysis
-        </p>
+        <p class="text-muted fs-5">AI-powered sky region segmentation</p>
     </div>
 
     <div class="row g-4">
         <!-- LEFT: Upload -->
         <div class="col-lg-5">
-            <div class="card shadow-lg border-0 h-100">
+            <div class="card shadow h-100">
                 <div class="card-body">
                     <h5 class="card-title mb-4">Upload Sky Image</h5>
                     
@@ -71,12 +30,11 @@
                         </div>
                     </label>
 
-                    <!-- Preview Original Image -->
                     <img id="imagePreview" class="img-fluid mt-3 rounded d-none" alt="Preview">
                     
                     <button id="detectBtn" class="btn btn-primary detect-btn w-100 mt-4 fw-bold">
                         <span id="btnText">Detect Sky</span>
-                        <span id="loadingSpinner" class="spinner-border spinner-border-sm d-none ms-2" role="status"></span>
+                        <span id="loadingSpinner" class="spinner-border spinner-border-sm d-none ms-2"></span>
                     </button>
                 </div>
             </div>
@@ -84,25 +42,24 @@
 
         <!-- RIGHT: Result -->
         <div class="col-lg-7">
-            <div class="card shadow-lg border-0 h-100">
+            <div class="card shadow h-100">
                 <div class="card-body">
                     <h5 class="card-title mb-4">Hasil Segmentasi</h5>
                     
                     <div class="image-preview text-center mb-4">
-                        <img id="resultImage" class="img-fluid rounded shadow-sm" alt="Result">
+                        <img id="resultImage" class="img-fluid rounded" alt="Result">
                         <canvas id="canvas"></canvas>
                     </div>
 
                     <div class="result-box p-4 rounded">
-                        <h6 class="mb-3">📊 Hasil Deteksi:</h6>
-                        <ul id="resultList" class="mb-0 list-unstyled"></ul>
+                        <h6 class="mb-3">📊 Hasil Deteksi</h6>
+                        <ul id="resultList" class="mb-0"></ul>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Footer -->
     <div class="text-center mt-5 text-muted small">
         © 2026 Sky Segmentation • Powered by Ultralytics
     </div>
