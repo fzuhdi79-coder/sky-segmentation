@@ -23,7 +23,7 @@ function resetResult() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
-// Preview Gambar
+// Preview
 fileInput.addEventListener("change", () => {
     const file = fileInput.files[0];
     if (!file) return;
@@ -36,7 +36,7 @@ fileInput.addEventListener("change", () => {
     reader.readAsDataURL(file);
 });
 
-// Detect Button
+// Detect
 detectBtn.addEventListener("click", async () => {
     const file = fileInput.files[0];
     if (!file) return alert("Pilih gambar dulu!");
@@ -47,8 +47,8 @@ detectBtn.addEventListener("click", async () => {
 
     const form = new FormData();
     form.append("file", file);
-    form.append("conf", "0.01");     // Sangat rendah
-    form.append("iou", "0.45");
+    form.append("conf", "0.01");
+    form.append("iou", "0.5");
     form.append("imgsz", "640");
 
     try {
@@ -59,14 +59,14 @@ detectBtn.addEventListener("click", async () => {
         });
 
         const data = await response.json();
-        console.log("=== FULL API RESPONSE ===", data);
+        console.log("FULL RESPONSE:", data);
 
         resultImage.src = imagePreview.src;
         resultImage.onload = () => drawResult(data);
 
     } catch (err) {
         console.error(err);
-        alert("Error koneksi ke API");
+        alert("Error saat memproses gambar");
     } finally {
         btnText.textContent = "Detect Sky";
         loadingSpinner.classList.add("d-none");
@@ -74,18 +74,16 @@ detectBtn.addEventListener("click", async () => {
     }
 });
 
-// ================= DRAW RESULT =================
+// Draw Result
 function drawResult(data) {
     const results = data.images?.[0]?.results || [];
     resultList.innerHTML = "";
 
-    console.log("Jumlah hasil deteksi:", results.length);
-
     if (results.length === 0) {
         resultList.innerHTML = `
             <li class="text-warning">
-                ⚠️ Model belum mendeteksi langit pada gambar ini.<br>
-                <small>Coba pakai gambar langit yang cerah dan biru.</small>
+                ⚠️ Model belum bisa mendeteksi langit pada gambar ini.<br>
+                <small>Gunakan gambar langit cerah dengan banyak awan putih.</small>
             </li>`;
         return;
     }
@@ -97,7 +95,7 @@ function drawResult(data) {
     const scaleY = canvas.height / img.naturalHeight;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    results.forEach((pred, i) => {
+    results.forEach((pred) => {
         const { x1, y1, x2, y2 } = pred.box || {};
         if (!x1) return;
 
@@ -123,20 +121,5 @@ function drawResult(data) {
         const li = document.createElement("li");
         li.innerHTML = `✅ ${label}`;
         resultList.appendChild(li);
-
-        // Mask
-        if (pred.segments?.x?.length > 0) {
-            ctx.beginPath();
-            pred.segments.x.forEach((px, idx) => {
-                const x = px * scaleX;
-                const y = pred.segments.y[idx] * scaleY;
-                idx === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-            });
-            ctx.closePath();
-            ctx.fillStyle = "rgba(34, 197, 94, 0.4)";
-            ctx.fill();
-            ctx.strokeStyle = color;
-            ctx.stroke();
-        }
     });
 }
