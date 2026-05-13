@@ -1,7 +1,7 @@
 // =========================================
 // KONFIGURASI
 // =========================================
-const url = "https://predict-6a04026fc6ff28d6705e-dproatj77a-et.a.run.app/predict";
+const url = "https://predict-6a047d4a843ee5421261-dproatj77a-et.a.run.app/predict";
 const apiKey = "ul_a8b80a07c79ff47679476137091f3136eac6aa75";
 
 // =========================================
