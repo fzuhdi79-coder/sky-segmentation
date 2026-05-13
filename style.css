@@ -1,0 +1,247 @@
+/* =======================================================
+   STYLE GLOBAL BODY
+   ======================================================= */
+body {
+
+    /* Background gradasi gelap */
+    background: linear-gradient(135deg, #0f172a, #020617);
+
+    /* Warna text utama */
+    color: #f8fafc;
+}
+
+
+/* =======================================================
+   CANVAS
+   Digunakan untuk menggambar bounding box & segmentasi
+   ======================================================= */
+canvas {
+
+    /* Posisi absolut agar berada di atas gambar */
+    position: absolute;
+
+    top: 0;
+    left: 0;
+
+    /* Canvas tidak bisa diklik */
+    pointer-events: none;
+}
+
+
+/* =======================================================
+   CARD
+   Styling card Bootstrap
+   ======================================================= */
+.card {
+
+    /* Background card */
+    background: #1e293b;
+
+    /* Warna text */
+    color: #f1f5f9;
+
+    /* Membuat sudut membulat */
+    border-radius: 15px;
+}
+
+
+/* =======================================================
+   HEADER TEXT
+   Semua heading menggunakan warna terang
+   ======================================================= */
+h1, h2, h3, h4, h5, h6 {
+
+    color: #f8fafc;
+}
+
+
+/* =======================================================
+   TEXT MUTED
+   Override warna muted bawaan Bootstrap
+   ======================================================= */
+.text-muted {
+
+    color: #cbd5f5 !important;
+}
+
+
+/* =======================================================
+   UPLOAD BOX
+   Area drag & drop upload gambar
+   ======================================================= */
+.upload-box {
+
+    /* Border putus-putus */
+    border: 2px dashed #64748b;
+
+    /* Sudut rounded */
+    border-radius: 12px;
+
+    /* Padding dalam box */
+    padding: 30px;
+
+    /* Cursor berubah jadi pointer */
+    cursor: pointer;
+
+    /* Animasi hover */
+    transition: 0.3s;
+
+    /* Background transparan */
+    background: rgba(255,255,255,0.02);
+}
+
+
+/* =======================================================
+   EFEK HOVER UPLOAD BOX
+   ======================================================= */
+.upload-box:hover {
+
+    /* Border berubah biru */
+    border-color: #38bdf8;
+
+    /* Background sedikit biru transparan */
+    background: rgba(56,189,248,0.12);
+}
+
+
+/* =======================================================
+   TEXT DALAM UPLOAD BOX
+   ======================================================= */
+.upload-box p {
+
+    /* Warna text */
+    color: #e2e8f0;
+
+    /* Ketebalan text */
+    font-weight: 500;
+}
+
+
+/* =======================================================
+   TEXT KECIL DALAM UPLOAD BOX
+   ======================================================= */
+.upload-box small {
+
+    color: #94a3b8;
+}
+
+
+/* =======================================================
+   BUTTON INFO
+   Custom tombol detect
+   ======================================================= */
+.btn-info {
+
+    /* Background tombol */
+    background-color: #38bdf8;
+
+    /* Hilangkan border */
+    border: none;
+
+    /* Warna text */
+    color: #0f172a;
+}
+
+
+/* =======================================================
+   BUTTON HOVER
+   ======================================================= */
+.btn-info:hover {
+
+    /* Warna lebih gelap saat hover */
+    background-color: #0ea5e9;
+}
+
+
+/* =======================================================
+   IMAGE PREVIEW CONTAINER
+   Tempat gambar & canvas
+   ======================================================= */
+.image-preview {
+
+    /* Background gelap */
+    background: #020617;
+
+    /* Relative agar canvas absolute mengikuti container */
+    position: relative;
+
+    /* Sudut rounded */
+    border-radius: 10px;
+}
+
+
+/* =======================================================
+   RESULT IMAGE
+   Gambar hasil deteksi
+   ======================================================= */
+#resultImage {
+
+    /* Maksimal lebar gambar */
+    max-width: 500px;
+}
+
+
+/* =======================================================
+   RESULT BOX
+   Box daftar hasil deteksi
+   ======================================================= */
+.result-box {
+
+    /* Background */
+    background: #020617;
+
+    /* Warna text */
+    color: #e2e8f0;
+}
+
+
+/* =======================================================
+   JUDUL RESULT BOX
+   ======================================================= */
+.result-box h6 {
+
+    /* Warna heading */
+    color: #f1f5f9;
+
+    /* Jarak bawah */
+    margin-bottom: 10px;
+}
+
+
+/* =======================================================
+   LIST HASIL DETEKSI
+   ======================================================= */
+.result-box ul {
+
+    /* Hilangkan bullet list */
+    list-style: none;
+
+    /* Hilangkan padding kiri */
+    padding-left: 0;
+}
+
+
+/* =======================================================
+   ITEM HASIL DETEKSI
+   ======================================================= */
+.result-box li {
+
+    /* Padding antar item */
+    padding: 6px 0;
+
+    /* Garis pemisah */
+    border-bottom: 1px solid #334155;
+
+    /* Warna text */
+    color: #e2e8f0;
+}
+
+
+/* =======================================================
+   FOOTER
+   ======================================================= */
+footer, small {
+
+    /* Warna text footer */
+    color: #94a3b8 !important;
+}
