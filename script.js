@@ -54,7 +54,7 @@ detectBtn.addEventListener("click", async () => {
 
     const form = new FormData();
     form.append("file", file);
-    form.append("conf", "0.05");      // Sangat rendah untuk testing
+    form.append("conf", "0.03");      // Sangat rendah untuk testing
     form.append("iou", "0.5");
     form.append("imgsz", "640");
 
