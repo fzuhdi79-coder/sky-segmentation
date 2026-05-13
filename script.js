@@ -135,7 +135,7 @@ function drawResult(data) {
     });
 }
 
-// ================= ANALISIS CERAH / MENDUNG (Versi Terbaru) =================
+// ================= ANALISIS CERAH / MENDUNG (Versi Final) =================
 function analyzeSkyCondition(pred, img) {
     const canvasTemp = document.createElement("canvas");
     const ctxTemp = canvasTemp.getContext("2d", { willReadFrequently: true });
@@ -151,14 +151,16 @@ function analyzeSkyCondition(pred, img) {
     const pixels = ctxTemp.getImageData(0, 0, width, height).data;
     
     let r = 0, g = 0, b = 0, count = 0;
-    let maxB = 0;
+    let maxBrightness = 0;
 
-    for (let i = 0; i < pixels.length; i += 12) {  // sampling lebih cepat
+    for (let i = 0; i < pixels.length; i += 12) {
         r += pixels[i];
         g += pixels[i+1];
         b += pixels[i+2];
         count++;
-        if (pixels[i+2] > maxB) maxB = pixels[i+2];
+
+        const brightness = (pixels[i] + pixels[i+1] + pixels[i+2]) / 3;
+        if (brightness > maxBrightness) maxBrightness = brightness;
     }
 
     const avgR = r / count;
@@ -166,19 +168,20 @@ function analyzeSkyCondition(pred, img) {
     const avgB = b / count;
     const brightness = (avgR + avgG + avgB) / 3;
     const grayness = Math.max(Math.abs(avgR - avgG), Math.abs(avgG - avgB), Math.abs(avgB - avgR));
+    const blueDominance = avgB - (avgR + avgG)/2;
 
-    console.log(`[DEBUG] R:${avgR.toFixed(0)} G:${avgG.toFixed(0)} B:${avgB.toFixed(0)} | Bright:${brightness.toFixed(0)} | Gray:${grayness.toFixed(1)}`);
+    console.log(`[DEBUG] R:${avgR.toFixed(0)} G:${avgG.toFixed(0)} B:${avgB.toFixed(0)} | Bright:${brightness.toFixed(0)} | Gray:${grayness.toFixed(1)} | BlueDom:${blueDominance.toFixed(1)}`);
 
-    // Logika yang lebih baik untuk mendung
-    if (brightness < 115 || grayness < 18) {
+    // ================= LOGIKA BARU =================
+    if (brightness < 125 || grayness < 22) {
         return { isClear: false, label: "(Mendung)", description: "Langit Mendung" };
     }
-    if (brightness < 145 && grayness < 35) {
-        return { isClear: false, label: "(Berawan)", description: "Langit Berawan" };
+    if (brightness < 145 && grayness < 40) {
+        return { isClear: false, label: "(Berawan)", description: "Langit Berawan Tebal" };
     }
-    if (avgB > avgR + 25 && brightness > 130) {
-        return { isClear: true, label: "(Cerah)", description: "Langit Biru" };
+    if (blueDominance > 30 && brightness > 145) {
+        return { isClear: true, label: "(Cerah)", description: "Langit Biru Cerah" };
     }
 
-    return { isClear: true, label: "(Cerah)", description: "Langit Cerah" };
+    return { isClear: false, label: "(Berawan)", description: "Langit Berawan" };
 }
